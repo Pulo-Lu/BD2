@@ -1,0 +1,195 @@
+public class CommandModule : EntityModule
+{
+    // 命令状态
+    public enum State { Idle, Acting, Completed, Dead }
+
+    public State CurrentState { get; private set; } = State.Idle;
+
+    // 执行战斗命令
+    public void ExecuteCommand(IBattleCommand command)
+    {
+        if(CurrentState != State.Idle) return;
+
+        CurrentState = State.Acting;
+        entity.StartCoroutine(ExecuteCoroutine(command));
+    }
+
+    private IEnumerator ExecuteCoroutine(IBattleCommand command)
+    {
+        // 播放准备动作
+        yield return command.Prepare();
+
+        // 实际执行
+        command.Execute();
+
+        // 播放结束动画
+        yield return command.Conclude();
+
+        CurrentState = command.IsComplete ? State.Completed : State.Idle;
+    }
+
+    public void Die()
+    {
+        CurrentState = State.Dead;
+        // 播放死亡动画
+        // 移出战场等
+    }
+}
+
+public interface IBattleCommand
+{
+    bool IsComplete { get; }
+    IEnumerator Prepare();
+    void Execute();
+    IEnumerator Conclude();
+}public class BattleManager : MonoSingleton<BattleManager>
+ {
+     private BattleState currentState;
+     private Queue<BattleEntity> turnQueue = new Queue<BattleEntity>();
+     private int currentRound = 0;
+     
+     // 当前连锁数（回合内所有实体共享）
+     private int globalComboCount = 0;
+ 
+     private void Start()
+     {
+         // 初始化战斗
+         StartBattle();
+     }
+ 
+     private void StartBattle()
+     {
+         // 创建双方实体
+         // 排序行动顺序
+         // 进入第一回合
+         ChangeState(new RoundStartState());
+     }
+ 
+     public void ChangeState(BattleState newState)
+     {
+         currentState?.Exit();
+         currentState = newState;
+         currentState?.Enter();
+     }
+     
+     // 获取当前全局连锁数
+     public int GetGlobalComboCount()
+     {
+         return globalComboCount;
+     }
+     
+     // 增加全局连锁数
+     public void IncreaseGlobalCombo()
+     {
+         globalComboCount++;
+     }
+ 
+     // 回合结束处理
+     public void OnRoundEnd()
+     {
+         // 重置全局连锁数
+         globalComboCount = 0;
+         
+         // 更新技能CD和状态
+         foreach(var entity in turnQueue)
+         {
+             entity.GetModule<SkillModule>()?.OnTurnEnd();
+             entity.GetModule<StatusModule>()?.OnTurnEnd();
+             entity.GetModule<AttributeModule>()?.ResetCombo();
+         }
+ 
+         // 进入下一回合
+         currentRound++;
+         ChangeState(new RoundStartState());
+     }
+     
+     // 实体行动完成
+     public void OnEntityTurnComplete()
+     {
+         // 检查是否所有实体都已完成行动
+         if(turnQueue.All(e => e.GetModule<CommandModule>().CurrentState != CommandModule.State.Idle))
+         {
+             OnRoundEnd();
+         }
+         else
+         {
+             // 切换到下一个实体
+             ChangeState(new EntityTurnState());
+         }
+     }
+ }public class SkillCommand : IBattleCommand
+  {
+      private BattleEntity caster;
+      private SkillConfig skillConfig;
+      private BattleEntity target;
+      private DamageCalculationModule damageModule;
+  
+      public bool IsComplete { get; private set; }
+  
+      public SkillCommand(BattleEntity caster, SkillConfig skillConfig, BattleEntity target)
+      {
+          this.caster = caster;
+          this.skillConfig = skillConfig;
+          this.target = target;
+          this.damageModule = caster.GetModule<DamageCalculationModule>();
+      }
+  
+      public IEnumerator Prepare()
+      {
+          // 播放施法动画
+          caster.GetModule<EffectModule>().PlaySkillEffect(skillConfig.ID, target.transform.position);
+          yield return new WaitForSeconds(skillConfig.CastTime);
+      }
+  
+      public void Execute()
+      {
+          // 计算伤害
+          var damageResult = damageModule.CalculateDamage(caster, target, skillConfig);
+  
+          // 应用伤害
+          target.GetModule<AttributeModule>().ModifyHP(-damageResult.Damage);
+  
+          // 显示伤害数字
+          target.GetModule<EffectModule>().ShowDamageText(damageResult.Damage, damageResult.IsCritical);
+  
+          // 处理技能效果
+          foreach(var effect in skillConfig.Effects)
+          {
+              ApplyEffect(caster, target, effect);
+          }
+  
+          // 增加全局连锁数
+          BattleManager.Instance.IncreaseGlobalCombo();
+  
+          // 进入CD
+          caster.GetModule<SkillModule>().StartCooldown(skillConfig.ID);
+      }
+      
+      private void ApplyEffect(BattleEntity caster, BattleEntity target, SkillEffect effect)
+      {
+          switch(effect.Type)
+          {
+              case SkillEffectType.Status:
+                  var statusModule = target.GetModule<StatusModule>();
+                  if(statusModule != null)
+                  {
+                      statusModule.AddStatus(new StatusEffect
+                      {
+                          Type = effect.StatusType,
+                          Element = effect.Element,
+                          Value = effect.Value,
+                          Duration = effect.Duration
+                      });
+                  }
+                  break;
+              // 其他效果处理...
+          }
+      }
+  
+      public IEnumerator Conclude()
+      {
+          // 结束动画
+          yield return new WaitForSeconds(0.5f);
+          IsComplete = true;
+      }
+  }
