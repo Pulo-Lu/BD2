@@ -73,12 +73,11 @@ namespace HotFix.GamePlay.Grid
             }
         }
         
-        
         #region 放置实体
 
         public bool PlaceEntity(EntityBase entity, EntityTeamType camp, int row, int col)
         {
-            var cells = GetCellsByCamp(camp);
+            var cells = GetCellsByTeam(camp);
             if (!IsValidCell(row, col, camp) || !cells[row, col].IsEmpty)
                 return false;
 
@@ -86,6 +85,17 @@ namespace HotFix.GamePlay.Grid
             entity.Row = row;
             entity.Col = col;
             entity.EntityTeam = camp;
+            return true;
+        }
+
+        public bool ClearEntity(EntityTeamType camp, int row, int col)
+        {
+            var cells = GetCellsByTeam(camp);
+            if (!IsValidCell(row, col, camp) || !cells[row, col].IsEmpty)
+                return false;
+
+            cells[row, col].Occupant = null;
+
             return true;
         }
 
@@ -98,7 +108,7 @@ namespace HotFix.GamePlay.Grid
         /// </summary>
         public bool MoveEntity(EntityBase entity, int targetRow, int targetCol)
         {
-            var cells = GetCellsByCamp(entity.EntityTeam);
+            var cells = GetCellsByTeam(entity.EntityTeam);
             if (!IsValidCell(targetRow, targetCol, entity.EntityTeam) || !cells[targetRow, targetCol].IsEmpty)
                 return false;
 
@@ -118,7 +128,7 @@ namespace HotFix.GamePlay.Grid
         /// </summary>
         public bool PushEntity(EntityBase entity, int targetRow, int targetCol)
         {
-            var cellsArray = GetCellsByCamp(entity.EntityTeam);
+            var cellsArray = GetCellsByTeam(entity.EntityTeam);
 
             if (!IsValidCell(targetRow, targetCol, entity.EntityTeam) ||
                 !cellsArray[targetRow, targetCol].IsEmpty)
@@ -139,19 +149,19 @@ namespace HotFix.GamePlay.Grid
         
         #region 查询
 
-        public GridCell GetCell(EntityTeamType camp, int row, int col)
+        public GridCell GetCell(EntityTeamType team, int row, int col)
         {
-            if (!IsValidCell(row, col, camp)) return null;
-            return GetCellsByCamp(camp)[row, col];
+            if (!IsValidCell(row, col, team)) return null;
+            return GetCellsByTeam(team)[row, col];
         }
 
-        public List<EntityBase> GetCampEntities(EntityTeamType camp)
+        public List<EntityBase> GetCampEntities(EntityTeamType team)
         {
             var list = new List<EntityBase>();
-            var cells = GetCellsByCamp(camp);
+            var cells = GetCellsByTeam(team);
             for (int r = 1; r <= rows; r++)
             {
-                for (int c = 1; c <= (camp == EntityTeamType.Self ? playerCols : enemyCols); c++)
+                for (int c = 1; c <= (team == EntityTeamType.Self ? playerCols : enemyCols); c++)
                 {
                     if (!cells[r, c].IsEmpty) list.Add(cells[r, c].Occupant);
                 }
@@ -163,18 +173,33 @@ namespace HotFix.GamePlay.Grid
         
         #region 工具方法
 
-        private GridCell[,] GetCellsByCamp(EntityTeamType camp)
+        private GridCell[,] GetCellsByTeam(EntityTeamType team)
         {
-            return camp == EntityTeamType.Self ? playerCells : enemyCells;
+            return team == EntityTeamType.Self ? playerCells : enemyCells;
         }
 
-        private bool IsValidCell(int row, int col, EntityTeamType camp)
+        /// <summary>
+        /// 检查一个格子坐标是否在当前阵营的有效范围内
+        /// </summary>
+        /// <param name="row">行号，从 1 开始</param>
+        /// <param name="col">列号，从 1 开始</param>
+        /// <param name="team">所属阵营（我方 / 敌方）</param>
+        /// <returns>true = 有效格子，false = 越界</returns>
+        private bool IsValidCell(int row, int col, EntityTeamType team)
         {
             if (row < 1 || row > rows) return false;
-            if (camp == EntityTeamType.Self) return col >= 1 && col <= playerCols;
+            if (team == EntityTeamType.Self) return col >= 1 && col <= playerCols;
             else return col >= 1 && col <= enemyCols;
         }
         
+        /// <summary>
+        /// 根据当前坐标、阵营和推动方向，计算下一个格子的坐标
+        /// </summary>
+        /// <param name="row">当前所在行（从 1 开始）</param>
+        /// <param name="col">当前所在列（从 1 开始）</param>
+        /// <param name="team">所属阵营（我方 / 敌方）</param>
+        /// <param name="direction">推动方向</param>
+        /// <returns>下一个格子的坐标 (row, col)</returns>
         private (int row, int col) GetNextCell(int row, int col, EntityTeamType team, PushDirection direction)
         {
             bool isEnemy = team == EntityTeamType.Enemy;

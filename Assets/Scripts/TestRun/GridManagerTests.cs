@@ -1,3 +1,4 @@
+using HotFix;
 using HotFix.GamePlay;
 using HotFix.GamePlay.Battle;
 using HotFix.GamePlay.Grid;
@@ -10,7 +11,7 @@ namespace TestRun
     {
         private GridManager gridManager;
         private Entity player1, player2;
-        private Entity enemy1, enemy2;
+        private Entity enemy1, enemy2, enemy3;
         
         [SetUp]
         public void SetUp()
@@ -38,15 +39,24 @@ namespace TestRun
             var enemyObj2 = new GameObject();
             enemyObj2.AddComponent<Entity>();
             enemy2 = enemyObj2.GetComponent<Entity>();
-            enemy2.Init("Enemy2");
+            enemy2.Init("Enemy2");  
+            
+            var enemyObj3 = new GameObject();
+            enemyObj3.AddComponent<Entity>();
+            enemy3 = enemyObj3.GetComponent<Entity>();
+            enemy3.Init("Enemy3");
 
             // 放置单位
             gridManager.PlaceEntity(player1, EntityTeamType.Self, 1, 1);
             gridManager.PlaceEntity(player2, EntityTeamType.Self, 2, 2);
 
             gridManager.PlaceEntity(enemy1, EntityTeamType.Enemy, 1, 1);
-            gridManager.PlaceEntity(enemy2, EntityTeamType.Enemy, 3, 4);
+            gridManager.PlaceEntity(enemy2, EntityTeamType.Enemy, 1, 3);
+            gridManager.PlaceEntity(enemy3, EntityTeamType.Enemy, 1, 4);
         }
+
+        #region GridManagerTest
+
         
         /// <summary>
         /// 初始化单位
@@ -60,7 +70,7 @@ namespace TestRun
 
             // 敌方格子
             Assert.AreEqual(enemy1, gridManager.GetCell(EntityTeamType.Enemy, 1, 1).Occupant);
-            Assert.AreEqual(enemy2, gridManager.GetCell(EntityTeamType.Enemy, 3, 4).Occupant);
+            Assert.AreEqual(enemy2, gridManager.GetCell(EntityTeamType.Enemy, 1, 3).Occupant);
         }
 
         /// <summary>
@@ -99,7 +109,7 @@ namespace TestRun
             var enemyEntities = gridManager.GetCampEntities(EntityTeamType.Enemy);
 
             Assert.AreEqual(2, playerEntities.Count);
-            Assert.AreEqual(2, enemyEntities.Count);
+            Assert.AreEqual(3, enemyEntities.Count);
             CollectionAssert.Contains(playerEntities, player1);
             CollectionAssert.Contains(enemyEntities, enemy1);
         }
@@ -115,5 +125,76 @@ namespace TestRun
             moved = gridManager.MoveEntity(player1, 4, 1);
             Assert.IsFalse(moved);
         }
+        
+        #endregion
+
+        #region TargetTest
+
+        /// <summary>
+        /// 最前方
+        /// </summary>
+        [Test]
+        public void TestFindFrontEnemy()
+        {
+            var target1 = GameLogic.FindTarget(player1, TargetMode.Frontmost, gridManager);
+            Assert.AreEqual(enemy1, target1, "验证：索敌最前方：索敌最前方 我方在第一行，敌人在第一行 失败");
+
+            var target2 = GameLogic.FindTarget(player2, TargetMode.Frontmost, gridManager);
+            Assert.AreEqual(enemy1, target2, "验证：索敌最前方：索敌最前方 我方在第二行，敌人在第一行 失败");
+            //==================================================================
+
+            bool moved1 = gridManager.MoveEntity(enemy3, 3, 2);
+            Assert.IsTrue(moved1, "移动敌人3失败");
+
+            var target3 = GameLogic.FindTarget(player2, TargetMode.Frontmost, gridManager);
+            Assert.AreEqual(enemy3, target3, "验证：索敌最前方：索敌最前方 我方在第二行，敌人在第三行 失败");
+
+            //==================================================================
+            gridManager.MoveEntity(enemy1, 2, 1);
+            gridManager.MoveEntity(enemy2, 2, 2);
+            gridManager.MoveEntity(enemy3, 3, 4);
+
+            var target4 = GameLogic.FindTarget(player1, TargetMode.Frontmost, gridManager);
+            Assert.AreEqual(enemy1, target4, "验证：索敌最前方 我方在第一行，敌人在第二行 失败");
+
+            var target5 = GameLogic.FindTarget(player2, TargetMode.Frontmost, gridManager);
+            Assert.AreEqual(enemy1, target5, "验证：索敌最前方 我方在第二行，敌人在第二行 失败");
+
+        }
+
+        /// <summary>
+        /// 越过
+        /// </summary>
+        [Test]
+        public void TestFindOverstepEnemy()
+        {
+            var target1 = GameLogic.FindTarget(player1, TargetMode.Overpass, gridManager);
+            Assert.AreEqual(enemy2, target1, "验证：越过 我方在第一行，敌人在第一行 失败");
+
+            var target2 = GameLogic.FindTarget(player2, TargetMode.Overpass, gridManager);
+            Assert.AreEqual(enemy2, target2, "验证：越过 我方在第二行，敌人在第一行 失败");
+            //==================================================================
+
+            bool moved1 = gridManager.MoveEntity(enemy3, 3, 2);
+            Assert.IsTrue(moved1, "移动敌人3失败");
+
+            var target3 = GameLogic.FindTarget(player2, TargetMode.Overpass, gridManager);
+            Assert.AreEqual(enemy3, target3, "验证：越过 我方在第二行，敌人在第三行 失败");
+
+            //==================================================================
+            gridManager.MoveEntity(enemy1, 2, 1);
+            gridManager.MoveEntity(enemy2, 2, 2);
+            gridManager.MoveEntity(enemy3, 3, 4);
+
+            var target4 = GameLogic.FindTarget(player1, TargetMode.Overpass, gridManager);
+            Assert.AreEqual(enemy2, target4, "验证：越过 我方在第一行，敌人在第二行 失败");
+
+            var target5 = GameLogic.FindTarget(player2, TargetMode.Overpass, gridManager);
+            Assert.AreEqual(enemy2, target5, "验证：越过 我方在第二行，敌人在第二行 失败");
+
+        }
+
+        #endregion
+
     }
 }
