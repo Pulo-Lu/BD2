@@ -19,5 +19,5 @@ MonoBehaviour:
   Defense: 0
   CritRate: 0
   CritDamage: 0
-  InitialSkills: 
+  InitialSkills: 00000000000000000000000000000000
   Prefab: {fileID: 0}

@@ -3,6 +3,8 @@ using UnityEngine;
 
 public static class GameTools
 {
+    #region 物体相关
+
     public static void DestroyChildren(this Transform t)
     {
         bool isPlaying = Application.isPlaying;
@@ -53,4 +55,63 @@ public static class GameTools
             rectTransform.anchoredPosition = Vector2.zero;
         }
     }
+
+    #endregion
+
+    #region 数据相关
+
+    /// <summary>
+    ///     获取一个随机整数，范围为 [min, max] 包含 min 和 max
+    /// </summary>
+    /// <param name="min"></param>
+    /// <param name="max"></param>
+    /// <returns></returns>
+    public static int RandomInt(int min, int max) {
+        return Random.Range(min, max + 1);
+    }
+
+    /// <summary>
+    ///     获取一个随机布尔值，概率为 0.5 为true，0.5 为false
+    /// </summary>
+    /// <returns></returns>
+    public static bool RandomBool() {
+        return Random.value < 0.5f;
+    }
+
+    /// <summary>
+    ///     获取一个随机布尔值，概率为 probability 为true，(1-probability) 为false
+    /// </summary>
+    /// <param name="probability"></param>
+    /// <returns></returns>
+    public static bool RandomBool(float probability) {
+        return Random.value < probability;
+    }
+
+    public static bool RandomBool(int probability) {
+        return RandomBool(probability / 100f);
+    }
+
+    public static float RandomFloat(float min, float max) {
+        return Random.Range(min, max);
+    }
+
+    /// <summary>
+    /// 从100%中获取概率
+    /// </summary>
+    /// <param name="f"></param>
+    /// <returns> true 命中概率，false 未命中概率 </returns>
+    public static bool Probability(float f) {
+
+        float randomValue = Random.Range(0f, 100f);
+        if (randomValue < f)
+        {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    #endregion
+   
 }

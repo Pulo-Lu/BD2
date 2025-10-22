@@ -191,46 +191,6 @@ namespace HotFix.GamePlay.Grid
             if (team == EntityTeamType.Self) return col >= 1 && col <= playerCols;
             else return col >= 1 && col <= enemyCols;
         }
-        
-        /// <summary>
-        /// 根据当前坐标、阵营和推动方向，计算下一个格子的坐标
-        /// </summary>
-        /// <param name="row">当前所在行（从 1 开始）</param>
-        /// <param name="col">当前所在列（从 1 开始）</param>
-        /// <param name="team">所属阵营（我方 / 敌方）</param>
-        /// <param name="direction">推动方向</param>
-        /// <returns>下一个格子的坐标 (row, col)</returns>
-        private (int row, int col) GetNextCell(int row, int col, EntityTeamType team, PushDirection direction)
-        {
-            bool isEnemy = team == EntityTeamType.Enemy;
-
-            switch (direction)
-            {
-                case PushDirection.Forward:
-                    col += isEnemy ? -1 : 1;
-                    break;
-                case PushDirection.Backward:
-                    col += isEnemy ? 1 : -1;
-                    break;
-                case PushDirection.Left:
-                    row -= 1;
-                    break;
-                case PushDirection.Right:
-                    row += 1;
-                    break;
-                case PushDirection.ForwardLeft:
-                    col += isEnemy ? -1 : 1;
-                    row -= 1;
-                    break;
-                case PushDirection.ForwardRight:
-                    col += isEnemy ? -1 : 1;
-                    row += 1;
-                    break;
-            }
-
-            return (row, col);
-        }
-
 
         #endregion
         
